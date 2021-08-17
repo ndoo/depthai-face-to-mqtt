@@ -16,22 +16,28 @@ from imutils.video import FPS
 parser = argparse.ArgumentParser()
 
 parser.add_argument("-p", "--preview", action="store_true",
-                    help="Preview camera")
+                    help="preview camera")
 parser.add_argument("-b", "--database-dir", type=str, default="databases",
-                    help="Path to save/load recognition databases")
+                    help="path to save/load recognition databases (default: %(default)s)")
 parser.add_argument("-n", "--no-enroll", action="store_true",
-                    help="Do not auto-enroll")
+                    help="do not auto-enroll")
 parser.add_argument("-t", "--throttle", type=int, default=10,
-                    help="Seconds to throttle recognition alerts")
-parser.add_argument("-v", "--verbose", help="Increase output verbosity",
-                    action="store_true")
+                    help="seconds to throttle recognition alerts (default: %(default)d)")
+parser.add_argument("-v", "--verbose", action="store_true",
+                    help="increase output verbosity")
+parser.add_argument("-r", "--recognize-threshold", type=int, default=85,
+                    help="confidence percentage to meet or exceed for recognition (default: %(default)d)")
+parser.add_argument("-c", "--continue-threshold", type=int, default=75,
+                    help="confidence percentage to meet or exceed to continue enroll (re-recognition) (default: %(default)d)")
 
 args = parser.parse_args()
 
-preview       = args.preview
-noenroll      = args.no_enroll
-throttle_secs = args.throttle
-db_dir        = args.database_dir
+preview        = args.preview
+noenroll       = args.no_enroll
+throttle_secs  = args.throttle
+db_dir         = args.database_dir
+recognize_conf = args.recognize_threshold / 100
+enroll_conf    = args.continue_threshold / 100
 
 log_level = logging.DEBUG if args.verbose else logging.INFO
 logging.basicConfig(level=log_level,
@@ -137,7 +143,6 @@ class DepthAI:
         # ColorCamera
         logging.debug("Creating Color Camera...")
         self.cam = self.pipeline.createColorCamera()
-        self.cam.setPreviewSize(self._cam_size[1], self._cam_size[0])
         self.cam.setPreviewSize(self._cam_size[1], self._cam_size[0])
         self.cam.setResolution(
             depthai.ColorCameraProperties.SensorResolution.THE_4_K
@@ -406,15 +411,17 @@ class Main(DepthAI):
             
             name = conf[0]
 
-            if name[0] >= 0.7:
+            if name[0] >= recognize_conf:
                 # Use debug log level to minimize screen scroll
                 logging.debug(f"Face detected: {name[1]}; confidence: {name[0] * 100:.2f}%\a")
                 face_detected(name[1])
-            elif name[0] > 0.6:
+
+            if name[0] >= enroll_conf:
                 logging.info(f"Face detected, updating enrolment: {name[1]}; confidence: {name[0] * 100:.2f}%\a")
                 enroll(name[1], face_frame, results, self.labels,
                        self.db_dic)
-            elif name[0] < 0.2:
+
+            if name[0] < 0.2:
                 logging.info(f"Face detected, enrolling: {name[1]}; confidence: {name[0] * 100:.2f}%\a")
                 enroll(datetime.datetime.now().isoformat().replace(':','_'),
                     face_frame, results, self.labels, self.db_dic)
