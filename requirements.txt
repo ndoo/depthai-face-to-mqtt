@@ -1,0 +1,6 @@
+depthai==2.9.0.0
+blobconverter==1.0.0
+opencv-python
+numpy
+imutils
+throttle
