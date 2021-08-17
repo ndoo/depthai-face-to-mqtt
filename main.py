@@ -29,7 +29,7 @@ parser.add_argument("-v", "--verbose", help="Increase output verbosity",
 args = parser.parse_args()
 
 preview       = args.preview
-noenroll      = args.noenroll
+noenroll      = args.no_enroll
 throttle_secs = args.throttle
 db_dir        = args.database_dir
 
